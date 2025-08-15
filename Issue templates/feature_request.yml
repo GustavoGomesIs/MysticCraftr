@@ -1,0 +1,15 @@
+name: Feature request
+description: Sugira um recurso
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta
+      description: Descreva o que espera ver
+      placeholder: Ex. integração com MythicMobs para ritual X...
