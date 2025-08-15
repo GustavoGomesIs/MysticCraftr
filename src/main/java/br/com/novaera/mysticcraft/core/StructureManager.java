@@ -38,19 +38,15 @@ public final class StructureManager {
     // ---------- detecção por IA OU Material ----------
     public boolean matchesCoreBlock(Block b){
         if (cfg.coreCustomBlockId != null && !cfg.coreCustomBlockId.isBlank() && ItemsAdderCompat.isEnabled()) {
-            // aceita CustomBlock OU Furniture IA para o núcleo
             if (ItemsAdderCompat.matchesBlockOrFurniture(b, cfg.coreCustomBlockId)) return true;
-            // Se estiver configurado um bloco IA específico, não aceite outros
-            return false;
+            return false; // se configurou IA, fica estrito
         }
         return b.getType() == cfg.coreMat;
     }
 
     public boolean matchesAltarBlock(Block b){
         if (cfg.altarCustomBlockId != null && !cfg.altarCustomBlockId.isBlank() && ItemsAdderCompat.isEnabled()) {
-            // aceita CustomBlock OU Furniture IA com o mesmo ID (ex.: iadeco:table)
             if (ItemsAdderCompat.matchesBlockOrFurniture(b, cfg.altarCustomBlockId)) return true;
-            // Se estiver configurado um bloco IA específico, não aceite outros
             return false;
         }
         return b.getType() == cfg.altarMat;

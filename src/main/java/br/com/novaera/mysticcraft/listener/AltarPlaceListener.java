@@ -3,6 +3,7 @@ package br.com.novaera.mysticcraft.listener;
 import br.com.novaera.mysticcraft.MysticCraft;
 import br.com.novaera.mysticcraft.core.StructureManager;
 import br.com.novaera.mysticcraft.core.StructureService;
+import br.com.novaera.mysticcraft.integrations.ItemsAdderCompat;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -10,7 +11,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
 
 public final class AltarPlaceListener implements Listener {
     private final StructureManager sm;
@@ -24,34 +26,34 @@ public final class AltarPlaceListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.NORMAL)
-    public void onPlace(BlockPlaceEvent e){
-        Block b = e.getBlockPlaced();
+    public void onPlace(BlockPlaceEvent e) {
+        if (e.getItemInHand() == null) return;
 
-        // 1) ignorar TUDO que não seja bloco de altar (vanilla OU IA)
-        if (!sm.matchesAltarBlock(b)) return;
+        Block placed = e.getBlockPlaced();
 
-        // 2) precisa ter um core por perto; se não tiver => ignora (deixa colocar livre)
-        Block core = service.findNearestCore(b.getLocation());
-        if (core == null) return;
-
-        // 3) mesa completa? cancela e avisa
-        var missing = service.missingAltarsForCore(core);
-        if (missing.isEmpty()) {
-            e.setCancelled(true);
-            e.getPlayer().sendMessage("§eA mesa já está completa.");
+        // 1) NÃO interferir com placement de furniture/custom-block do IA (o IA tem próprios eventos)
+        if (ItemsAdderCompat.isEnabled() && ItemsAdderCompat.isAnyIaAt(placed)) {
             return;
         }
 
-        // 4) é uma posição válida da grade?
-        if (!isValidAltarPos(core, b)) {
+        // 2) Só lidamos aqui com altares VANILLA. (IA furniture é tratado pelo IaFurnitureListener)
+        if (!sm.matchesAltarBlock(placed)) return;
+
+        // 3) Encontrar um núcleo válido próximo
+        Block core = service.findNearestCore(placed.getLocation());
+        if (core == null) return; // não há núcleo por perto: não bloqueia
+
+        // 4) Verifica se a posição é um offset válido da grade
+        if (!isValidAltarPos(core, placed)) {
             e.setCancelled(true);
-            e.getPlayer().sendMessage("§cEste bloco de altar está no lugar errado. Coloque onde o §aX §cestiver marcado:");
+            e.getPlayer().sendMessage("§cEste pilar está no lugar errado. Coloque onde o §aX §cestiver marcado:");
+            var missing = service.missingAltarsForCore(core);
             sendGridHint(e.getPlayer(), core, missing);
             return;
         }
 
-        // 5) posição válida -> deixa colocar e tenta montar/consertar
-        service.ensureIntactOrDisassemble(b, e.getPlayer());
+        // 5) Posição válida -> deixa colocar e tenta montar/consertar
+        service.ensureIntactOrDisassemble(placed, e.getPlayer());
     }
 
     private boolean isValidAltarPos(Block core, Block altar){

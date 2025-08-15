@@ -2,7 +2,6 @@ package br.com.novaera.mysticcraft.integrations;
 
 import dev.lone.itemsadder.api.CustomBlock;
 import dev.lone.itemsadder.api.CustomFurniture;
-import dev.lone.itemsadder.api.CustomStack;
 import dev.lone.itemsadder.api.ItemsAdder;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -10,66 +9,60 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
-import org.bukkit.entity.ItemFrame;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.util.BoundingBox;
+import org.bukkit.entity.ItemDisplay;
 import org.jetbrains.annotations.Nullable;
+import dev.lone.itemsadder.api.CustomStack;
 
 public final class ItemsAdderCompat {
     private static final boolean ENABLED = Bukkit.getPluginManager().isPluginEnabled("ItemsAdder");
 
     private ItemsAdderCompat() {}
-
     public static boolean isEnabled() { return ENABLED; }
-
-    /* ===================== ITEMSTACK (mão) ===================== */
-
-    /** ID IA do item na mão (ex.: "namespace:id"), ou null se não for IA. */
-    public static @Nullable String idOf(@Nullable ItemStack stack) {
-        if (!ENABLED || stack == null) return null;
-        try {
-            CustomStack cs = CustomStack.byItemStack(stack);
-            return cs != null ? lower(cs.getNamespacedID()) : null;
-        } catch (Throwable ignored) {
-            return null;
-        }
-    }
 
     /* ===================== BLOCO/FURNITURE NO MUNDO ===================== */
 
-    /** Nome IA do que estiver “naquela posição”: tenta CustomBlock e depois Furniture por perto. */
+    /** Tenta obter o namespacedId IA presente naquele bloco (CustomBlock ou Furniture por perto). */
     public static @Nullable String idOf(Block block) {
         if (!ENABLED || block == null) return null;
 
-        // 1) CustomBlock IA diretamente no voxel
+        // --- IA v4+: CustomBlock diretamente no voxel
         try {
             CustomBlock cb = CustomBlock.byAlreadyPlaced(block);
             if (cb != null) return lower(cb.getNamespacedID());
         } catch (Throwable ignored) {}
 
-        // 2) Furniture próxima — checa centro do bloco, vizinhos e bloco abaixo (alguns pivôs ancoram assim)
+        // --- IA v3 (compat): tentar via reflection ItemsAdder.getCustomBlock(Block)
+        try {
+            var m = ItemsAdder.class.getMethod("getCustomBlock", Block.class);
+            Object res = m.invoke(null, block);
+            if (res instanceof CustomBlock cb) {
+                String id = cb.getNamespacedID();
+                if (id != null) return lower(id);
+            }
+            // Algumas builds retornam ItemStack aqui -> ignora como "não é CustomBlock"
+        } catch (Throwable ignored) {}
+
+        // --- Procurar Furniture em volta do centro do voxel (cobre pivôs fora do bloco)
         Location c = block.getLocation().add(0.5, 0.0, 0.5);
         String id =
-                furnitureIdNear(c, 1.6) != null ? furnitureIdNear(c, 1.6) :
-                        furnitureIdNear(c.clone().add( 1, 0,  0), 1.2) != null ? furnitureIdNear(c.clone().add( 1, 0,  0), 1.2) :
-                                furnitureIdNear(c.clone().add(-1, 0,  0), 1.2) != null ? furnitureIdNear(c.clone().add(-1, 0,  0), 1.2) :
-                                        furnitureIdNear(c.clone().add( 0, 0,  1), 1.2) != null ? furnitureIdNear(c.clone().add( 0, 0,  1), 1.2) :
-                                                furnitureIdNear(c.clone().add( 0,-0.5,0), 1.2); // levemente abaixo
+                furnitureIdNear(c, 1.6); // raio maior primeiro
+        if (id == null) id = furnitureIdNear(c.clone().add( 1, 0,  0), 1.2);
+        if (id == null) id = furnitureIdNear(c.clone().add(-1, 0,  0), 1.2);
+        if (id == null) id = furnitureIdNear(c.clone().add( 0, 0,  1), 1.2);
+        if (id == null) id = furnitureIdNear(c.clone().add( 0,-0.5,0), 1.2); // ligeiramente abaixo
         return id;
     }
 
     /** True se houver CustomBlock OU Furniture IA com o namespacedId naquela posição. */
-    public static boolean matchesBlockOrFurniture(Block block, @Nullable String namespacedId) {
-        if (!ENABLED || block == null || namespacedId == null || namespacedId.isBlank()) return false;
-        String got = idOf(block);
+    public static boolean matchesBlockOrFurniture(Block baseBlock, @Nullable String namespacedId) {
+        if (!ENABLED || baseBlock == null || namespacedId == null || namespacedId.isBlank()) return false;
+        String got = idOf(baseBlock);
         return got != null && got.equalsIgnoreCase(namespacedId);
     }
 
-    /** Apenas verifica se existe ALGUM CustomBlock OU Furniture IA no local. */
+    /** Apenas verifica se existe ALGUM objeto IA (CustomBlock ou Furniture) ali. */
     public static boolean isAnyIaAt(Block block) {
-        if (!ENABLED || block == null) return false;
-        if (idOf(block) != null) return true;
-        return false;
+        return isEnabled() && idOf(block) != null;
     }
 
     /* ===================== Helpers ===================== */
@@ -78,31 +71,40 @@ public final class ItemsAdderCompat {
     private static String furnitureIdNear(Location center, double r) {
         if (center == null || center.getWorld() == null) return null;
 
-        BoundingBox box = BoundingBox.of(center, r, r, r);
-        for (Entity e : center.getWorld().getNearbyEntities(box)) {
-            // IA costuma usar ArmorStand/ItemFrame/Interaction/*Display para furniture
-            if (!(e instanceof ArmorStand || e instanceof ItemFrame || e instanceof Interaction || isDisplayLike(e))) continue;
+        for (Entity e : center.getWorld().getNearbyEntities(center, r, r, r)) {
+            if (!looksLikeIaFurnitureEntity(e)) continue;
             try {
-                if (!ItemsAdder.isFurniture(e)) continue; // evita PLAYER etc.
                 CustomFurniture cf = CustomFurniture.byAlreadySpawned(e);
                 if (cf != null) {
-                    String id = lower(cf.getNamespacedID());
-                    if (id != null) return id;
+                    String id = cf.getNamespacedID();
+                    if (id != null) return lower(id);
                 }
             } catch (Throwable ignored) {
-                // versões diferentes do IA podem lançar erro se entidade não for suportada; ignoramos
+                // versões do IA podem lançar se não for furniture — ignoramos
             }
         }
         return null;
     }
 
-    private static boolean isDisplayLike(Entity e) {
-        // sem depender de classes, usa o nome do tipo (ITEM_DISPLAY, BLOCK_DISPLAY, TEXT_DISPLAY)
+    private static boolean looksLikeIaFurnitureEntity(Entity e) {
+        // IA costuma usar ArmorStand, ItemDisplay, Interaction (e *Display em geral)
+        if (e instanceof ArmorStand || e instanceof ItemDisplay || e instanceof Interaction) return true;
         String t = e.getType().name();
         return t.endsWith("DISPLAY");
     }
 
     private static String lower(String s) {
         return (s == null) ? null : s.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    public static @Nullable String idOfItem(org.bukkit.inventory.ItemStack item) {
+        if (!ENABLED || item == null) return null;
+        try {
+            CustomStack cs = CustomStack.byItemStack(item);
+            if (cs != null) return lower(cs.getNamespacedID());
+        } catch (Throwable ignored) {
+            // versões diferentes do IA podem lançar/variar: retornamos null se não for IA
+        }
+        return null;
     }
 }

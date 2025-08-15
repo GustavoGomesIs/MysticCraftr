@@ -124,7 +124,7 @@ public final class AltarInteractListener implements Listener {
         String iaId = null;
 
         if (cfg.itemsadderEnabled && ItemsAdderCompat.isEnabled()) {
-            iaId = ItemsAdderCompat.idOf(hand); // "namespace:id" ou null
+            iaId = ItemsAdderCompat.idOfItem(hand); // agora sim: ItemStack -> IA ID
         }
 
         if (iaId != null) {
