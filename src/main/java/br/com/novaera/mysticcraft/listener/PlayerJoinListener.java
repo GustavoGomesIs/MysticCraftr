@@ -2,32 +2,26 @@ package br.com.novaera.mysticcraft.listener;
 
 import br.com.novaera.mysticcraft.MysticCraft;
 import br.com.novaera.mysticcraft.core.StructureService;
-import org.bukkit.Chunk;
-import org.bukkit.Location;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 
-public final class ChunkLoadListener implements Listener {
+public final class PlayerJoinListener implements Listener {
     private final StructureService service;
     private final MysticCraft plugin; // << agora é MysticCraft
 
-    public ChunkLoadListener(StructureService service, MysticCraft plugin) {
+    public PlayerJoinListener(StructureService service, MysticCraft plugin) {
         this.service = service;
         this.plugin = plugin;
     }
 
     @EventHandler
-    public void onChunkLoad(ChunkLoadEvent e) {
-        var chunk = e.getChunk();
+    public void onJoin(PlayerJoinEvent e) {
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            for (var loc : service.coresInChunk(chunk)) {
+            for (var loc : service.allCores()) {
                 service.pokeRepairOnly(loc.getBlock());
             }
-            // stands já devem estar no lugar -> reinicia o spin
             plugin.getServer().getScheduler().runTaskLater(plugin, plugin::restartSpin, 1L);
-        }, 5L);
+        }, 20L);
     }
-
-
 }

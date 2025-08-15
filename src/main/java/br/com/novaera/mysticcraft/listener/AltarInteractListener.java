@@ -5,18 +5,20 @@ import br.com.novaera.mysticcraft.core.StructureManager;
 import br.com.novaera.mysticcraft.core.StructureService;
 import br.com.novaera.mysticcraft.i18n.Lang;
 import br.com.novaera.mysticcraft.integrations.ItemsAdderCompat;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
-public class AltarInteractListener implements Listener {
+public final class AltarInteractListener implements Listener {
     private final MysticCraft plugin;
     private final StructureManager sm;
     private final StructureService service;
@@ -38,37 +40,39 @@ public class AltarInteractListener implements Listener {
 
         String s = raw.toString().trim().replace(' ', '_').replace('-', '_')
                 .toUpperCase(java.util.Locale.ROOT);
-        switch (s) {
-            case "OFF", "FALSE", "NO", "NONE", "DISABLE", "DISABLED", "0": return PutTakeMode.OFF;
-            case "CHAT": return PutTakeMode.CHAT;
-            case "ACTION_BAR", "ACTIONBAR", "BAR", "ACTIONS_BAR":
-            default: return PutTakeMode.ACTION_BAR;
-        }
+        return switch (s) {
+            case "OFF", "FALSE", "NO", "NONE", "DISABLE", "DISABLED", "0" -> PutTakeMode.OFF;
+            case "CHAT" -> PutTakeMode.CHAT;
+            default -> PutTakeMode.ACTION_BAR;
+        };
     }
 
     private void sendPutTake(Player p, String key){
         PutTakeMode mode = getPutTakeMode();
         if (mode == PutTakeMode.OFF) return;
         if (mode == PutTakeMode.ACTION_BAR) {
-            net.kyori.adventure.text.Component comp =
-                    net.kyori.adventure.text.Component.text(Lang.raw(key));
-            p.sendActionBar(comp);
+            p.sendActionBar(Component.text(Lang.raw(key)));
         } else {
             p.sendMessage(Lang.t(key));
         }
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.NORMAL)
     public void onInteract(PlayerInteractEvent e){
+        // Só reagimos a clique com a MÃO PRINCIPAL em BLOCO
         if (e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
-        if (e.getClickedBlock() == null) return;
-        if (!sm.isAltar(e.getClickedBlock())) return;
         if (e.getHand() != EquipmentSlot.HAND) return;
+        if (e.getClickedBlock() == null) return;
+
+        var altarBlock = e.getClickedBlock();
+
+        // ======= LINHA MAIS IMPORTANTE: só processa se for altar MARCADO =======
+        if (!sm.isAltar(altarBlock)) return;
 
         Player p = e.getPlayer();
         ItemStack hand = p.getInventory().getItemInMainHand();
 
-        var altarBlock = e.getClickedBlock();
+        // Verifica a quem pertence esse altar
         var coreBlock = service.findOwningCoreOfAltar(altarBlock);
         if (coreBlock == null){
             p.sendMessage(Lang.t("altar_no_owner"));
@@ -76,9 +80,12 @@ public class AltarInteractListener implements Listener {
             return;
         }
 
+        // Posição esperada do stand do altar
         Location expected = service.expectedStandLocation(coreBlock, altarBlock);
         ArmorStand as = sm.findStandNear(expected);
         if (as == null){
+            // se por algum motivo o stand não estiver lá, não fazemos manutenção por clique
+            // apenas avisa e sai; manutenção acontece em place/break/join/chunk
             p.sendMessage(Lang.t("altar_no_stand"));
             e.setCancelled(true);
             return;
@@ -116,7 +123,7 @@ public class AltarInteractListener implements Listener {
         boolean allowed = true;
         String iaId = null;
 
-        if (cfg.itemsadderEnabled && ItemsAdderCompat.isPresent()) {
+        if (cfg.itemsadderEnabled && ItemsAdderCompat.isEnabled()) {
             iaId = ItemsAdderCompat.idOf(hand); // "namespace:id" ou null
         }
 
@@ -161,7 +168,7 @@ public class AltarInteractListener implements Listener {
         hand.setAmount(hand.getAmount() - 1);
         p.getInventory().setItemInMainHand(hand.getAmount() > 0 ? hand : null);
 
-        plugin.restartSpin();
+        // NÃO chama reparo/assemble aqui
         sendPutTake(p, "altar_put");
         e.setCancelled(true);
     }

@@ -1,22 +1,22 @@
 mysticcraft:
   integrations:
     itemsadder:
-      enabled: true        # liga/desliga a compat
+      enabled: true
+
   messages:
     put_take: 'OFF'   # CHAT | ACTION_BAR | OFF
 
   protections:
     enabled: true
-    require_permission: false   # true => só quem tiver permissão pode colocar/quebrar núcleo/pilares
+    require_permission: false
     block:
-      pistons: true             # impede pistões de mover núcleo/pilares
-      explosions: true          # ignora TnT/creeper sobre núcleo/pilares
-      fluids: true              # barra água/lava de invadir os blocos da mesa
-      armorstand_direct: true   # bloqueia clicar direto no ArmorStand do altar (bypass com permissão)
+      pistons: true
+      explosions: true
+      fluids: true
+      armorstand_direct: true
 
   effects:
     enabled: true
-
     assemble:
       particle: ENCHANTMENT_TABLE
       count: 60
@@ -25,7 +25,6 @@ mysticcraft:
       sound: BLOCK_ENCHANTMENT_TABLE_USE
       volume: 1.0
       pitch: 1.2
-
     disassemble:
       particle: CLOUD
       count: 40
@@ -34,8 +33,7 @@ mysticcraft:
       sound: BLOCK_GLASS_BREAK
       volume: 0.9
       pitch: 1.0
-
-    put: # colocar item no altar
+    put:
       particle: END_ROD
       count: 12
       offset: 1
@@ -43,8 +41,7 @@ mysticcraft:
       sound: ENTITY_EXPERIENCE_ORB_PICKUP
       volume: 0.6
       pitch: 1.5
-
-    take: # retirar item do altar
+    take:
       particle: CLOUD
       count: 10
       offset: 1
@@ -54,30 +51,31 @@ mysticcraft:
       pitch: 1.8
 
   core:
-    material: ENCHANTING_TABLE
-    custom_block: '' # ex.: mypack:core_block  (vazio = não usar IA)
+    material: iadeco:small_fountain        # se quiser IA, troque por "meupack:core_furniture"
+    # custom_block: ''                 # deixe vazio/comentado se usar IA no material
+
   altar:
-    material: POLISHED_BLACKSTONE
-    custom_block: 'mypack:altar_pilar'   # usa IA p/ identificar pilar
+    material: iadeco:table            # IA (namespace:id). Se for vanilla, use nome de Material.
+    # custom_block: ''                 # deixe vazio/comentado se usar IA no material
 
     allowed_items:
-     - BLAZE_ROD
-     - DIAMOND
+      - BLAZE_ROD
+      - DIAMOND
 
-    allowed_custom: # namespaced IDs do IA (ex.: meu_pacote:gema_arcana)
+    allowed_custom:
       - mypack:magic_gem
       - runes:fire_core
+
     stand:
       small: true
       marker: true
       y_offset: 0.30
-      radial_back_offset: 0   # empurra o stand "pra trás" radialmente (em relação ao núcleo)
-
+      radial_back_offset: 0.00
       spin:
-        enabled: true          # liga/desliga a animação
-        deg_per_step: 2.0      # graus por atualização (passo)
-        period_ticks: 1        # intervalo entre passos (em ticks, 20 ticks = 1s)
-        mode: HEAD_POSE        # HEAD_POSE (recomendado) ou YAW
+        enabled: true
+        deg_per_step: 2.0
+        period_ticks: 1
+        mode: HEAD_POSE
 
   area:
     size:
@@ -85,8 +83,6 @@ mysticcraft:
       length: 7
       height: 1
 
-  # Grade 7x7: de cima p/ baixo é Norte→Sul; da esquerda p/ direita é Oeste→Leste
-  # A = núcleo (S); P = altar; V = vazio
   altars:
     - "VVVPVVV"
     - "VPVVVPV"

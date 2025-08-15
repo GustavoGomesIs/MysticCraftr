@@ -1,76 +1,82 @@
 package br.com.novaera.mysticcraft.task;
 
+import br.com.novaera.mysticcraft.MysticCraft;
 import br.com.novaera.mysticcraft.core.StructureManager;
 import br.com.novaera.mysticcraft.core.StructureService;
-import org.bukkit.Bukkit;
+import br.com.novaera.mysticcraft.config.StructureConfig;
 import org.bukkit.Location;
-import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.entity.ArmorStand;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.EulerAngle;
+import org.bukkit.Material;
 
 public final class SpinTask {
-    private final JavaPlugin plugin;
+    private final MysticCraft plugin;
     private final StructureManager sm;
     private final StructureService service;
-    private org.bukkit.scheduler.BukkitTask handle;
 
-    public SpinTask(JavaPlugin plugin, StructureManager sm, StructureService service){
-        this.plugin = plugin;
-        this.sm = sm;
-        this.service = service;
+    private BukkitTask task;
+
+    public SpinTask(MysticCraft plugin, StructureManager sm, StructureService service){
+        this.plugin   = plugin;
+        this.sm       = sm;
+        this.service  = service;
     }
 
     public void start(){
         stop();
-        if (!sm.cfg().spinEnabled) return; // não agenda se está desligado
-        int period = Math.max(1, sm.cfg().spinPeriodTicks);
-        handle = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, period, period);
+        long period = Math.max(1L, sm.cfg().spinPeriodTicks); // garante >=1
+        // roda SEMPRE; ele mesmo se auto-“noopa” quando desabilitado
+        task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, period, period);
     }
 
     public void stop(){
-        if (handle != null){ handle.cancel(); handle = null; }
+        if (task != null) {
+            task.cancel();
+            task = null;
+        }
     }
 
     private void tick(){
-        var cfg = sm.cfg();
-        double stepDeg = cfg.spinDegPerStep;
-        boolean useHead = "HEAD_POSE".equalsIgnoreCase(cfg.spinMode);
+        StructureConfig cfg = sm.cfg();
+        if (!cfg.spinEnabled) return;
 
-        boolean rotatedSomething = false; // << escopo correto
+        final boolean useHeadPose = "HEAD_POSE".equalsIgnoreCase(cfg.spinMode);
+        final double stepDeg = cfg.spinDegPerStep;
+        final double stepRad = Math.toRadians(stepDeg);
 
+        // NADA de cache: varre as mesas salvas e encontra o stand atual de cada altar
         for (Location coreLoc : service.allCores()){
-            var core = coreLoc.getBlock();
-            if (!service.isIntact(core)) continue;
+            Block core = coreLoc.getBlock();
 
             for (int[] off : cfg.altarOffsets){
-                var altar = core.getLocation().add(off[0], off[1], off[2]).getBlock();
+                Block altar = core.getLocation().add(off[0], off[1], off[2]).getBlock();
+
+                // Só anima se esse altar ainda for um altar válido/esperado
+                if (!sm.matchesAltarBlock(altar)) continue;
+
                 Location expected = service.expectedStandLocation(core, altar);
                 ArmorStand as = sm.findStandNear(expected);
-                if (as == null) continue; // evita NPE
+                if (as == null) continue;
 
-                ItemStack helm = as.getEquipment().getHelmet();
-                if (helm == null || helm.getType() == Material.AIR) continue; // só gira com item
+                // >>> só anima se tiver item no “capacete”
+                var equip = as.getEquipment();
+                if (equip == null) continue;
+                var helm = equip.getHelmet();
+                if (helm == null || helm.getType() == Material.AIR) continue;
+                // <<< fim da checagem
 
-                if (useHead){
-                    EulerAngle pose = as.getHeadPose();
-                    as.setHeadPose(new EulerAngle(
-                            pose.getX(),
-                            pose.getY() + Math.toRadians(stepDeg),
-                            pose.getZ()
-                    ));
+                if (useHeadPose) {
+                    var pose = as.getHeadPose();
+                    as.setHeadPose(new EulerAngle(pose.getX(), pose.getY() + stepRad, pose.getZ()));
                 } else {
-                    Location l = as.getLocation();
+                    var l = as.getLocation();
                     l.setYaw(l.getYaw() + (float) stepDeg);
                     as.teleport(l);
                 }
-                rotatedSomething = true;
-            }
-        }
 
-        if (!rotatedSomething) {
-            stop(); // pausa a task até alguém colocar um item
+            }
         }
     }
 }

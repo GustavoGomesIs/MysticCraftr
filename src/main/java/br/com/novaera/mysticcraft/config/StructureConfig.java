@@ -5,6 +5,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.Vector;
 
 import java.util.*;
 
@@ -33,6 +34,10 @@ public final class StructureConfig {
     // effects
     public final boolean effectsEnabled;
     public final EffectSpec fxAssemble, fxDisassemble, fxPut, fxTake;
+
+    // Offsets dos pilares prontos para uso (Vector dx,dy,dz)
+    private List<Vector> pillarOffsets = Collections.emptyList();
+    public List<Vector> getPillarOffsets() { return pillarOffsets; }
 
     public StructureConfig(Material coreMat, Material altarMat, double standYOffset,
                            boolean standSmall, boolean standMarker,
@@ -84,21 +89,29 @@ public final class StructureConfig {
         ConfigurationSection iaSec  = (intSec != null) ? intSec.getConfigurationSection("itemsadder") : null;
         boolean iaEnabled = (iaSec == null) || iaSec.getBoolean("enabled", true);
 
-        // materiais (fallback vanilla)
-        Material core  = matchOrDefault(coreSec  != null ? coreSec.getString("material")  : null, Material.ENCHANTING_TABLE);
-        Material altar = matchOrDefault(altarSec != null ? altarSec.getString("material") : null, Material.POLISHED_BLACKSTONE);
+        // ===== Materiais OU IA (unificado) =====
+        String coreMatRaw  = (coreSec  != null) ? coreSec.getString("material")  : null;
+        String altarMatRaw = (altarSec != null) ? altarSec.getString("material") : null;
+
+        // Se "material" parecer IA e o IA estiver habilitado → trata como IA; Material vira AIR (placeholder)
+        Material core  = (looksLikeIaId(coreMatRaw)  && iaEnabled) ? Material.AIR : matchOrDefault(coreMatRaw,  Material.ENCHANTING_TABLE);
+        Material altar = (looksLikeIaId(altarMatRaw) && iaEnabled) ? Material.AIR : matchOrDefault(altarMatRaw, Material.POLISHED_BLACKSTONE);
+
+        // Derivados do material (caso ele seja IA)
+        String coreIaFromMat  = (iaEnabled && looksLikeIaId(coreMatRaw))  ? normalizeIaId(coreMatRaw)  : null;
+        String altarIaFromMat = (iaEnabled && looksLikeIaId(altarMatRaw)) ? normalizeIaId(altarMatRaw) : null;
+
+        // Back-compat: custom_block tem prioridade sobre material
+        String coreIaId  = normalizeIaId((coreSec  != null) ? coreSec.getString("custom_block", "")  : "");
+        String altarIaId = normalizeIaId((altarSec != null) ? altarSec.getString("custom_block", "") : "");
+        if (coreIaId == null)  coreIaId  = coreIaFromMat;
+        if (altarIaId == null) altarIaId = altarIaFromMat;
 
         // stand
         boolean small   = standSec != null && standSec.getBoolean("small",  true);
         boolean marker  = standSec != null && standSec.getBoolean("marker", true);
         double  yOff    = (standSec != null) ? standSec.getDouble("y_offset", 0.62) : 0.62;
         double  backOff = (standSec != null) ? standSec.getDouble("radial_back_offset", 0.08) : 0.08;
-
-        // IA: custom blocks para core/altar
-        String coreIaId  = (coreSec  != null) ? coreSec.getString("custom_block", "")  : "";
-        String altarIaId = (altarSec != null) ? altarSec.getString("custom_block", "") : "";
-        coreIaId  = (coreIaId  != null && !coreIaId.isBlank())  ? coreIaId.trim().toLowerCase(Locale.ROOT)  : null;
-        altarIaId = (altarIaId != null && !altarIaId.isBlank()) ? altarIaId.trim().toLowerCase(Locale.ROOT) : null;
 
         // whitelist vanilla
         Set<Material> allow = new HashSet<>();
@@ -139,6 +152,7 @@ public final class StructureConfig {
         EffectSpec fxPut         = readEffect(fxSec, "put",         defPut);
         EffectSpec fxTake        = readEffect(fxSec, "take",        defTake);
 
+        // ---- Offsets em int[] (relativos ao núcleo) ----
         List<int[]> offs = new ArrayList<>();
 
         // 1) GRADE (lista de strings V/P/A)
@@ -173,30 +187,41 @@ public final class StructureConfig {
                     }
                 }
             }
-
-            return new StructureConfig(core, altar, yOff, small, marker, offs, backOff, allow,
-                    iaEnabled, allowIa,
-                    coreIaId, altarIaId,
-                    spinEnabled, spinStep, spinPeriod, spinMode,
-                    effectsEnabled, fxAssemble, fxDisassemble, fxPut, fxTake);
-        } // <<< FECHA o if da grade
-
-        // 2) Fallback: lista de mapas {dx,dy,dz}
-        List<Map<?, ?>> raw = root.getMapList("altars");
-        for (Map<?, ?> m0 : raw) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> m = (Map<String, Object>) (Map<?, ?>) m0;
-            int dx = toInt(m.get("dx"), 0);
-            int dy = toInt(m.get("dy"), 0);
-            int dz = toInt(m.get("dz"), 0);
-            offs.add(new int[]{dx, dy, dz});
+        } else {
+            // 2) Fallback: lista de mapas {dx,dy,dz}
+            List<Map<?, ?>> raw = root.getMapList("altars");
+            for (Map<?, ?> m0 : raw) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> m = (Map<String, Object>) (Map<?, ?>) m0;
+                int dx = toInt(m.get("dx"), 0);
+                int dy = toInt(m.get("dy"), 0);
+                int dz = toInt(m.get("dz"), 0);
+                offs.add(new int[]{dx, dy, dz});
+            }
         }
 
-        return new StructureConfig(core, altar, yOff, small, marker, offs, backOff, allow,
+        // Monta a config final
+        StructureConfig cfg = new StructureConfig(
+                core, altar, yOff, small, marker,
+                offs, backOff, allow,
                 iaEnabled, allowIa,
                 coreIaId, altarIaId,
                 spinEnabled, spinStep, spinPeriod, spinMode,
-                effectsEnabled, fxAssemble, fxDisassemble, fxPut, fxTake);
+                effectsEnabled, fxAssemble, fxDisassemble, fxPut, fxTake
+        );
+
+        // Offsets de pilares como Vector:
+        // - se veio grade, calcula pela grade (A como referência)
+        // - se não veio grade, usa os próprios offsets dx,dy,dz
+        if (!grid.isEmpty()) {
+            cfg.pillarOffsets = computePillarOffsets(grid);
+        } else {
+            List<Vector> vs = new ArrayList<>(offs.size());
+            for (int[] o : offs) vs.add(new Vector(o[0], o[1], o[2]));
+            cfg.pillarOffsets = Collections.unmodifiableList(vs);
+        }
+
+        return cfg;
     }
 
     /* ================= helpers ================= */
@@ -277,5 +302,58 @@ public final class StructureConfig {
             this.volume = volume;
             this.pitch = pitch;
         }
+    }
+
+    // Converte grade de 7x7 (ou N x M) em offsets Vector relativos ao 'A'
+    private static List<Vector> computePillarOffsets(List<String> lines) {
+        if (lines == null || lines.isEmpty()) return Collections.emptyList();
+
+        // normaliza: remove espaços e mede o maior comprimento
+        List<String> grid = new ArrayList<>(lines.size());
+        int maxLen = 0;
+        for (String raw : lines) {
+            String s = raw == null ? "" : raw.replace(" ", "");
+            grid.add(s);
+            if (s.length() > maxLen) maxLen = s.length();
+        }
+        if (maxLen == 0) return Collections.emptyList();
+
+        // encontra o núcleo (A); se não achar, usa o centro da grade
+        int coreRow = -1, coreCol = -1;
+        for (int r = 0; r < grid.size(); r++) {
+            String row = grid.get(r);
+            for (int c = 0; c < row.length(); c++) {
+                char ch = row.charAt(c);
+                if (ch == 'A' || ch == 'a') { coreRow = r; coreCol = c; break; }
+            }
+            if (coreRow != -1) break;
+        }
+        if (coreRow == -1 || coreCol == -1) {
+            coreRow = grid.size() / 2;
+            coreCol = maxLen / 2;
+        }
+
+        // Mapeia 'P' → Vector(dx, 0, dz). Convenções: linhas N→S, colunas W→E; Bukkit: +X=E, +Z=S
+        List<Vector> out = new ArrayList<>();
+        for (int r = 0; r < grid.size(); r++) {
+            String row = grid.get(r);
+            for (int c = 0; c < row.length(); c++) {
+                char ch = row.charAt(c);
+                if (ch == 'P' || ch == 'p') {
+                    int dx = c - coreCol;
+                    int dz = r - coreRow;
+                    out.add(new Vector(dx, 0, dz));
+                }
+            }
+        }
+        return Collections.unmodifiableList(out);
+    }
+
+    private static boolean looksLikeIaId(String s) {
+        return s != null && s.contains(":");
+    }
+
+    private static String normalizeIaId(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim().toLowerCase(Locale.ROOT);
     }
 }
