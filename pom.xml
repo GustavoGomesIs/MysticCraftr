@@ -1,0 +1,115 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>br.com.novaera</groupId>
+    <artifactId>mysticcraft</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <name>MysticCraft</name>
+    <packaging>jar</packaging>
+
+    <properties>
+        <!-- Alinhe com a versão do seu servidor Paper -->
+        <paper.version>1.21.8-R0.1-SNAPSHOT</paper.version>
+
+        <!-- Integrações (ajuste se precisar) -->
+        <papi.version>2.11.6</papi.version>           <!-- PlaceholderAPI -->
+        <vaultapi.version>1.7.1</vaultapi.version>     <!-- Vault API (JitPack) -->
+        <itemsadder.version>3.4.1-r4</itemsadder.version> <!-- ItemsAdder API (JitPack) -->
+        <mythicmobs.version>5.9.5</mythicmobs.version> <!-- MythicMobs -->
+        <modelengine.version>R4.0.6</modelengine.version> <!-- ModelEngine 4 -->
+
+        <maven.compiler.release>17</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <repositories>
+        <!-- PaperMC -->
+        <repository>
+            <id>papermc</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
+        </repository>
+
+        <!-- PlaceholderAPI -->
+        <repository>
+            <id>placeholderapi</id>
+            <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
+        </repository>
+
+        <!-- JitPack (Vault, ItemsAdder API) -->
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+
+        <!-- Lumine (MythicMobs + ModelEngine) -->
+        <repository>
+            <id>lumine-public</id>
+            <url>https://mvn.lumine.io/repository/maven-public/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <!-- Paper API -->
+        <dependency>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+            <version>${paper.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- PlaceholderAPI -->
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
+            <version>${papi.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Vault API -->
+        <dependency>
+            <groupId>com.github.MilkBowl</groupId>
+            <artifactId>VaultAPI</artifactId>
+            <version>${vaultapi.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- ItemsAdder API -->
+        <dependency>
+            <groupId>com.github.LoneDev6</groupId>
+            <artifactId>api-itemsadder</artifactId>
+            <version>${itemsadder.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- MythicMobs API -->
+        <dependency>
+            <groupId>io.lumine</groupId>
+            <artifactId>Mythic-Dist</artifactId>
+            <version>5.9.5</version>  <!-- pode usar 5.9.2 se preferir -->
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- ModelEngine 4 API -->
+        <dependency>
+            <groupId>com.ticxo.modelengine</groupId>
+            <artifactId>ModelEngine</artifactId>
+            <version>${modelengine.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

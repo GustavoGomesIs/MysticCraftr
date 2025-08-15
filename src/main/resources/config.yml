@@ -1,0 +1,97 @@
+mysticcraft:
+  integrations:
+    itemsadder:
+      enabled: true        # liga/desliga a compat
+  messages:
+    put_take: 'OFF'   # CHAT | ACTION_BAR | OFF
+
+  protections:
+    enabled: true
+    require_permission: false   # true => só quem tiver permissão pode colocar/quebrar núcleo/pilares
+    block:
+      pistons: true             # impede pistões de mover núcleo/pilares
+      explosions: true          # ignora TnT/creeper sobre núcleo/pilares
+      fluids: true              # barra água/lava de invadir os blocos da mesa
+      armorstand_direct: true   # bloqueia clicar direto no ArmorStand do altar (bypass com permissão)
+
+  effects:
+    enabled: true
+
+    assemble:
+      particle: ENCHANTMENT_TABLE
+      count: 60
+      offset: 0.50
+      speed: 0.01
+      sound: BLOCK_ENCHANTMENT_TABLE_USE
+      volume: 1.0
+      pitch: 1.2
+
+    disassemble:
+      particle: CLOUD
+      count: 40
+      offset: 0.40
+      speed: 0.00
+      sound: BLOCK_GLASS_BREAK
+      volume: 0.9
+      pitch: 1.0
+
+    put: # colocar item no altar
+      particle: END_ROD
+      count: 12
+      offset: 1
+      speed: 0.00
+      sound: ENTITY_EXPERIENCE_ORB_PICKUP
+      volume: 0.6
+      pitch: 1.5
+
+    take: # retirar item do altar
+      particle: CLOUD
+      count: 10
+      offset: 1
+      speed: 0.00
+      sound: UI_BUTTON_CLICK
+      volume: 0.5
+      pitch: 1.8
+
+  core:
+    material: ENCHANTING_TABLE
+    custom_block: '' # ex.: mypack:core_block  (vazio = não usar IA)
+  altar:
+    material: POLISHED_BLACKSTONE
+    custom_block: 'mypack:altar_pilar'   # usa IA p/ identificar pilar
+
+    allowed_items:
+     - BLAZE_ROD
+     - DIAMOND
+
+    allowed_custom: # namespaced IDs do IA (ex.: meu_pacote:gema_arcana)
+      - mypack:magic_gem
+      - runes:fire_core
+    stand:
+      small: true
+      marker: true
+      y_offset: 0.30
+      radial_back_offset: 0   # empurra o stand "pra trás" radialmente (em relação ao núcleo)
+
+      spin:
+        enabled: true          # liga/desliga a animação
+        deg_per_step: 2.0      # graus por atualização (passo)
+        period_ticks: 1        # intervalo entre passos (em ticks, 20 ticks = 1s)
+        mode: HEAD_POSE        # HEAD_POSE (recomendado) ou YAW
+
+  area:
+    size:
+      width: 7
+      length: 7
+      height: 1
+
+  # Grade 7x7: de cima p/ baixo é Norte→Sul; da esquerda p/ direita é Oeste→Leste
+  # A = núcleo (S); P = altar; V = vazio
+  altars:
+    - "VVVPVVV"
+    - "VPVVVPV"
+    - "VVVVVVV"
+    - "PVVAVVP"
+    - "VVVVVVV"
+    - "VPVVVPV"
+    - "VVVPVVV"

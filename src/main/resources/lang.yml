@@ -1,0 +1,13 @@
+prefix: "&6[MysticCraft]&r "
+
+messages:
+  no_permission: "&cVocê não tem permissão para isso."
+  altar_no_owner: "&cEste altar não pertence a nenhuma mesa ativa."
+  altar_no_stand: "&cEste altar está sem suporte. Reconstrua a mesa."
+  altar_empty: "&eNão há item neste altar."
+  altar_pick: "&aVocê pegou o item do altar."
+  altar_put: "&aItem colocado no altar."
+  altar_item_not_allowed: "&cEste item não é permitido no altar."
+  structure_incomplete: "&cEstrutura incompleta. Coloque todos os altares."
+  assemble_success: "&aMesa MysticCraft montada com sucesso!"
+  disassemble_broken: "&cMesa MysticCraft desmontada (bloco removido)."

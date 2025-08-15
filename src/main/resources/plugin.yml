@@ -1,0 +1,19 @@
+name: MysticCraft
+version: 1.0.0
+main: br.com.novaera.mysticcraft.MysticCraft
+api-version: '1.21'
+softdepend: [PlaceholderAPI, Vault, MythicMobs, ModelEngine, ItemsAdder]
+commands:
+  mystic:
+    description: Comandos do MysticCraft
+    usage: /mystic reload|debug
+    permission: mystic.admin
+    aliases: [mysticcraft]
+
+permissions:
+  mystic.admin:
+    default: op
+  mystic.use:
+    default: true
+  mystic.protect.bypass:
+    default: op
